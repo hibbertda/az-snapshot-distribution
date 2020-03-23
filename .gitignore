@@ -1,0 +1,4 @@
+*.azrm.json
+load-test*
+*scratch*
+*.vscode
