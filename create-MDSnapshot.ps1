@@ -26,26 +26,14 @@
 
     [array] List of VMs to attach the new disk(s)
 
-.PARAMETER attach
-
-    [bool] Attach new managed disk on the target virtual machine
-
 .EXAMPLE
        
-       create-snashotMD.ps1 -sourceVM VM01 -targetVMs VM02
-       
-       Data disk will be copied from VM01 to VM02
+       create-snashotMD.ps1 -sourceVM VM01 -snapshotRG rg-snapshotstorage
 #>
-
-[CmdletBinding(DefaultParameterSetName='config')]
 param (
-    # Default
+
     [parameter(position=0, mandatory=$true)][string]$sourceVm,
     [parameter(position=1, mandatory=$true)][string]$snapshotRG,
-    # Attach Enabled
-    [Parameter(ParameterSetName='attach', mandatory=$true)]  
-    [parameter(position=0)][bool]$attach = $false,
-    [parameter(position=3)][array]$targetVms = @("")
 )
 
 Clear-Host
