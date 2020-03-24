@@ -5,7 +5,7 @@ Copy and distribute managed disk snapshots across multiple Azure Subscriptions
 
 ## 1. Create Snapshot
 #### create-MDSnapshot.ps1
-A managed disk snapshot is created from data disks that are attached to the source virtal machine. 
+A managed disk snapshot is created from data disks that are attached to the source virtual machine. 
 
 ### Required Parameters
 
@@ -39,9 +39,9 @@ Configuration options from the original data disk will be recorded as tags on th
 ## 2. Copy Snapshot
 #### copy-snapshotRemoteSubscription.ps1
 
-Copy a managed disk snapshot between Azure subscrioptions.
+Copy a managed disk snapshot between Azure subscriptions.
 
-**Note**: The user running this script needs to have appropriate permissions to create and manage subscriptions in both directories. 
+**Note**: The user running this script needs to have appropriate permissions to create and manage snapshots in the source and target subscriptions. 
 
 ### Required Parameters
 
@@ -50,7 +50,7 @@ Copy a managed disk snapshot between Azure subscrioptions.
 |sourceSubscriptionID| Source Azure Subscription ID|
 |targetSubscriptionID| Target remote Azure Subscription ID|
 |snapshotRg| Resource Group where source snapshots are located|
-|targetResourceGroupName| Remote Resouce Group to copy snapshots|
+|targetResourceGroupName| Remote Resource Group to copy snapshots|
 
 
 ```powershell
