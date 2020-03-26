@@ -19,9 +19,13 @@
 
     [string] Source resource group name where snapshots are stored
 
-.PARAMETER targetVMs
+.PARAMETER targetVmName
 
     [string] Target VM to attach new managed disk
+
+.PARAMETER targetVmResourceGroupName
+
+    [string] Target VM Resource Group Name
 
 .EXAMPLE
        
@@ -30,12 +34,22 @@
 
 param (
     [parameter(position=1, mandatory=$true)][string]$snapshotRGName,
-    [parameter(position=2, Mandatory=$true)][string]$targetVms
+    [parameter(position=2, Mandatory=$true)][string]$targetVmName,
+    [parameter(position=3, Mandatory=$false)][string]$targetVmResourceGroupName
 )
 
-$vmConfig = Get-AzVM -name $targetVms
+# Query for targetVM configration. [Optional] include VM resource group name
+if($targetVmResourceGroupName){
+    $vmConfig = Get-AzVM `
+        -name $targetVmName `
+        -ResourceGroupName $targetVmResourceGroupName
+}
+else {
+    $vmConfig = Get-AzVM -name $targetVmName
+}
+
 # Check for valid VM. If not found exit script
-if ($vmConfig -eq $null){
+if (!$vmConfig.Id){
     Write-error -message "Unable to find target virtual machine. Check the name and try again"
     exit;
 }
@@ -44,19 +58,22 @@ if ($vmConfig -eq $null){
 write-host -ForegroundColor green "## Discovering Available Snapshots ##"
 $availableSnapshots = Get-AzSnapshot -ResourceGroupName $snapshotRGName
 
-# Check for multipule snapshots in the source Resource Group
-if ($availableSnapshots.count -gt 0){
-
-    # Generate menu to select snapshot
-    write-host -ForegroundColor yellow "`nMultiple snapshots found.`n"
-    [int]$listitr =1
-    $availableSnapshots | ForEach-Object {
-        write-host "[$listitr] - "$_.name
-        $listitr++
-    }
-    [string]$mdResponse = $(Read-Host -Prompt "Select snapshot")-1
-    $sourceSnapshot = $availableSnapshots[$mdResponse]
+# Confirm snapshots are found. If (0) exit script
+if ($availableSnapshots.count -eq 0){
+    Write-Error -Message "No snapshots found."
+    exit;
 }
+
+# Generate menu to select snapshot
+write-host -ForegroundColor yellow "`nMultiple snapshots found.`n"
+[int]$listitr =1
+$availableSnapshots | ForEach-Object {
+    write-host "[$listitr] - "$_.name
+    $listitr++
+}
+[string]$mdResponse = $(Read-Host -Prompt "Select snapshot")-1
+$sourceSnapshot = $availableSnapshots[$mdResponse]
+
 
 #### Create disk from snapshot
 ## Create new managed disk from snapshot
@@ -79,11 +96,11 @@ try {
             -DiskName $_.Name 
     }
     write-host -ForegroundColor Yellow "...Completed!"
-    write-host -Foregroundcolor green "`tDisk Name: $_.Name`n"
 }
 catch {
     Write-Error -Message "Managed Disk creation FAILED`n`n"
     $_
+    exit;
 }
     
 ## STEP 3: Attach data disk to target VM
@@ -94,7 +111,6 @@ try {
     foreach ($disk in $($vmConfig.StorageProfile.DataDisks)) {
     # If exists detach data disk
     if ($disk.lun -eq $sourceSnapshot.tags.LUN){
-
         write-host -foregroundColor Yellow "`n`t!! Found existing disk at LUN $($sourceSnapshot.tags.LUN) !!"
 
         Remove-AzVMDataDisk -VM $vmConfig -Name $disk.name
@@ -106,15 +122,18 @@ Add-AzVMDataDisk `
     -vm $vmConfig `
     -CreateOption attach `
     -Lun $sourceSnapshot.tags.LUN `
-    -ManagedDiskId $newMD.Id
+    -ManagedDiskId $newMD.Id `
+    -ErrorAction Stop
 
 Update-AzVm `
     -vm $vmConfig `
-    -ResourceGroupName $vmConfig.ResourceGroupName | out-null
+    -ResourceGroupName $vmConfig.ResourceGroupName `
+    -ErrorAction Stop | out-null
 
     write-host -ForegroundColor Yellow "...Completed!"
 }
 catch {
     write-error -message "Failed to attach to VM`n`n"
     $_
+    exit;
 }
