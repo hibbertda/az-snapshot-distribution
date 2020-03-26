@@ -72,16 +72,17 @@ The new disk will be attached to the target VM.
 |Name|Description|
 |---|---|
 |snapshotRGName|Resource Group where snapshots are stored|
-|targetVms|Target VM to attach disk|
+|targetVmName|Target VM to attach disk|
+|targetVmResourceGroupName|**optional**: Target VM Resource Group Name|
 
 ```powershell
 # Required Parameters
 param (
     [parameter(position=1, mandatory=$true)][string]$snapshotRGName,
-    [parameter(position=2, Mandatory=$true)][string]$targetVms
+    [parameter(position=2, Mandatory=$true)][string]$targetVmName,
+    [parameter(position=3, Mandatory=$false)][string]$targetVmResourceGroupName
 )
 ```
-
 Configuration options stored as Tags on the source snapshot will be used to define options for creating and attaching the new disk. 
 
 #### Configuration Option Tags
