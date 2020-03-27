@@ -1,5 +1,5 @@
 # Test ARM Template deployment to Azure Public
-name: Azure Public
+name: Azure Government
 
 on:
   push:
