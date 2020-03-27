@@ -28,18 +28,49 @@
 
 .EXAMPLE
        
-       create-snashotMD.ps1 -sourceVM VM01 -snapshotRG rg-snapshotstorage
+       create-snashotMD.ps1 -sourceVM VM01 -snapshotResourceGroupName rg-snapshotstorage
 #>
 param (
 
     [parameter(position=0, mandatory=$true)][string]$sourceVm,
-    [parameter(position=1, mandatory=$true)][string]$snapshotRG,
+    [parameter(position=1, mandatory=$true)][string]$snapshotResourceGroupName
 )
 
 Clear-Host
 
+
+try {
+    $result = Get-AzContext -ErrorAction Stop
+    if (-not $result.Environment) {
+        throw"Please login (Login-AzureRmAccount) and set the proper subscription context before proceeding."
+    }
+
+}
+catch {
+    throw "Please login and set the proper subscription context before proceeding."
+}
+
+
+
 # Global Variables
-$vmConfig = Get-AzVM -Name $sourceVm
+try {
+    # Validate: VM Exists
+    $vmConfig = Get-AzVM -Name $sourceVm -ErrorAction Stop
+    if (!$vmConfig.id){
+        throw "Unable to find specified VM"
+    }
+
+    # Validate: Resource Group Exists
+    $rgSnapshotStore = Get-AzResourceGroup -Name $snapshotResourceGroupName
+    if (!$rgSnapshotStore.Id){
+        throw "Unable to find Resource Group"
+    }
+}
+catch {
+    throw "Invalid parameters"
+    $_
+}
+
 $createdSnapshots = @()
 $configVar = New-Object psobject -Property @{
     sourceVM = $vmConfig.Name
@@ -92,7 +123,7 @@ $configVar.targetDataDisk | ForEach-Object {
         $createdSnapshots += (
         New-AzSnapshot -Snapshot $mdSnapshot `
             -SnapshotName $mdSnapshotName `
-            -ResourceGroupName $snapshotRG
+            -ResourceGroupName $snapshotResourceGroupName
         )
         write-host -ForegroundColor Yellow "...Completed!"
         write-host -ForegroundColor green "`tSnapshot Name: $mdSnapshotName`n"
