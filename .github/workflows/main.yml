@@ -26,8 +26,16 @@ jobs:
       uses: azure/login@v1
       with:
         creds: ${{ secrets.azSPCreds }}
-        
-    - name: Azure CLI Action
+
+    - name: Create Resource group
+      uses: Azure/cli@v1.0.0
+      with:
+        inlineScript: |
+          az group create \
+            --name ${{ secrets.azResourceGroupName }} \
+            --location ${{ secrets.azResourceGroupLocation }}
+
+    - name: Deploy Template
       uses: Azure/cli@v1.0.0
       with:
         # Specify the script here
