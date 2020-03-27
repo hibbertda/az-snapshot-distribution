@@ -1,0 +1,184 @@
+{
+    "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+    "contentVersion": "1.0.0.0",
+    "parameters": {
+        "automationAccountName": {
+           "type": "string",
+           "metadata": {
+                "description": "Automation Account Name"
+            },
+            "defaultValue":"hbl-testing-deployment"
+        },
+        "automationAccountSku": {
+           "type": "string",
+           "metadata": {
+                "description": "description"
+            },
+            "allowedValues":[
+                "Free",
+                "Basic"
+            ],
+            "defaultValue": "Basic"
+        },
+        "scriptRepoURL": {
+           "type": "string",
+           "metadata": {
+                "description": "URL for scripts repo"
+            },
+            "defaultValue": "https://raw.githubusercontent.com/hibbertda/az-snapshot-distribution/master/automation"
+        }
+    },
+    "variables": {
+        "autoAccountName": "[concat('aa-', parameters('automationAccountName'))]",
+        "azAutomationVariables": {
+            "runbooks": [
+                {
+                    "name":"Snapshot-Cleanup",
+                    "uri":"[concat(parameters('scriptRepoURL'),'/azAuto_SnapShotCleanup.ps1')]",
+                    "version":"1.0.0.0",
+                    "type":"PowerShell",
+                    "description":"Automatically remove snapshots by age"
+                }
+            ],
+            "variables": [
+                {
+                    "name":"snapshot_retentionDays",
+                    "value": "30",
+                    "description": "Max lifetime of disk snapshots in Days"
+                },
+                {
+                    "name":"snapshot_StorageResourceGroup",
+                    "value":"\"hbl-t-snapshotstorage\"",
+                    "description":"Snapshot storage Resource Group"
+                }            
+            ],
+            "modules": [
+                {
+                    "name":"Az.Compute",
+                    "uri":"https://devopsgallerystorage.blob.core.windows.net/packages/az.compute.3.5.0.nupkg"
+                },
+                {
+                    "name":"Az.Resources",
+                    "uri":"https://devopsgallerystorage.blob.core.windows.net/packages/az.resources.1.12.0.nupkg"
+                },
+                {
+                    "name":"Az.Storage",
+                    "uri":"https://devopsgallerystorage.blob.core.windows.net/packages/az.storage.1.13.0.nupkg"
+                }                                             
+            ],
+            "coreModules": {
+                "name":"Az.Accounts",
+                "uri":"https://devopsgallerystorage.blob.core.windows.net/packages/az.accounts.1.7.3.nupkg"
+            }
+        }
+    },
+    "resources": [
+        {
+            "name": "[variables('autoAccountName')]",
+            "type": "Microsoft.Automation/automationAccounts",
+            "apiVersion": "2015-10-31",
+            "location": "[resourceGroup().location]",
+            "tags": {},
+            "properties": {
+                "sku": {
+                    "name": "[parameters('automationAccountSku')]"
+                }
+            }
+        },
+        {
+            "name": "[concat(variables('autoAccountName'),'/',variables('azAutomationVariables').runbooks[copyIndex()].name)]",
+            "type": "Microsoft.Automation/automationAccounts/runbooks",
+            "apiVersion": "2015-10-31",
+            "location": "[resourceGroup().location]",
+            "tags": {},
+            "dependsOn": [
+                "[resourceId('Microsoft.Automation/automationAccounts', variables('autoAccountName'))]"
+            ],
+            "copy":{
+                "name":"runbookLoop",
+                "count":"[length(variables('azAutomationVariables').runbooks)]"
+            },
+            "properties": {
+                "logVerbose": true,
+                "logProgress": true,
+                "runbookType": "[variables('azAutomationVariables').runbooks[copyIndex()].type]",
+                "publishContentLink": {
+                    "uri": "[variables('azAutomationVariables').runbooks[copyIndex()].uri]",
+                    "version": "[variables('azAutomationVariables').runbooks[copyIndex()].version]"
+                },
+                "description": "description"
+            }
+        },
+        {
+            "name": "[concat(variables('autoAccountName'),'/',variables('azAutomationVariables').variables[copyIndex()].name)]",
+            "type": "Microsoft.Automation/automationAccounts/variables",
+            "apiVersion": "2015-10-31",
+            "dependsOn": [
+                "[resourceId('Microsoft.Automation/automationAccounts', variables('autoAccountName'))]"
+            ],
+            "copy":{
+                "name":"variablesLoop",
+                "count":"[length(variables('azAutomationVariables').variables)]"
+            },
+            "properties": {
+                "value": "[variables('azAutomationVariables').variables[copyIndex()].value]",
+                "description": "[variables('azAutomationVariables').variables[copyIndex()].description]",
+                "isEncrypted": false
+            }
+        },
+        {
+            "name": "[concat(variables('autoAccountName'), '/', variables('azAutomationVariables').coreModules.name)]",
+            "type": "Microsoft.Automation/automationAccounts/modules",
+            "apiVersion": "2015-10-31",
+            "dependsOn": [
+                "[resourceId('Microsoft.Automation/automationAccounts', variables('autoAccountName'))]"
+            ],
+            "properties": {
+                "contentLink": {
+                    "uri":"[variables('azAutomationVariables').coreModules.uri]"
+                }
+            }
+        },
+        {
+            "type": "Microsoft.Automation/automationAccounts/modules",
+            "apiVersion": "2015-10-31",
+            "name": "[concat(variables('autoAccountName'), '/', variables('azAutomationVariables').modules[copyIndex()].name)]",
+            "dependsOn": [
+                "[resourceId('Microsoft.Automation/automationAccounts', variables('autoAccountName'))]",
+                "[resourceId('Microsoft.Automation/automationAccounts/modules/', variables('autoAccountName'),variables('azAutomationVariables').coreModules.name)]"
+            ],
+            "copy":{
+                "name":"modulesLoop",
+                "count":"[length(variables('azAutomationVariables').modules)]"
+            },
+            "properties": {
+                "contentLink": {
+                    "uri":"[variables('azAutomationVariables').modules[copyIndex()].uri]"
+                }
+            }
+        },
+        {
+            "name": "[concat(variables('autoAccountName'),'/WeeklyRun')]",
+            "type": "Microsoft.Automation/automationAccounts/schedules",
+            "apiVersion": "2015-10-31",
+            "tags": {},
+            "dependsOn": [
+                "[resourceId('Microsoft.Automation/automationAccounts', variables('autoAccountName'))]"
+            ],
+            "properties": {
+                "description": "description",
+                "startTime": "2020-06-20T00:30:00+05:00",
+                "isEnabled": true,
+                "interval": 1,
+                "frequency": "Week",
+                "advancedSchedule":{
+                    "weekDays": [
+                        "monday"
+                    ]
+                }
+            }
+        }        
+    ],
+    "outputs": {},
+    "functions": []
+}
