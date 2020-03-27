@@ -9,7 +9,7 @@ on:
 
 # A workflow run is made up of one or more jobs that can run sequentially or in parallel
 jobs:
-  Deploy AzSnapshot Template:
+  deployAzSnapshotTemplate:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v2
