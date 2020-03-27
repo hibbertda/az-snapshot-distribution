@@ -1,0 +1,42 @@
+# Test ARM Template deployment to Azure Public
+name: Azure Public
+
+on:
+  push:
+    branches: [ master ]
+  pull_request:
+    branches: [ master ]
+
+# A workflow run is made up of one or more jobs that can run sequentially or in parallel
+jobs:
+  Deploy AzSnapshot Template:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v2
+
+    - name: Set AzCLI Gov
+      uses: Azure/cli@v1.0.0
+      with:
+        inlineScript: |
+          az cloud set --name AzureUSGovernment
+          
+    - name: Azure Login
+      uses: azure/login@v1
+      with:
+        creds: ${{ secrets.azSPCreds }}
+
+    - name: Create Resource group
+      uses: Azure/cli@v1.0.0
+      with:
+        inlineScript: |
+          az group create \
+            --name ${{ secrets.azResourceGroupName }} \
+            --location ${{ secrets.azGovResourceGroupLocation }}
+
+    - name: Deploy Template
+      uses: Azure/cli@v1.0.0
+      with:
+        inlineScript: |
+          az group deployment create \
+            --resource-group ${{ secrets.azResourceGroupName }} \
+            --template-file $GITHUB_WORKSPACE/AzAutomation/azSnapshotDistributionRunbook.azrm.json
