@@ -33,5 +33,5 @@ jobs:
         # Specify the script here
         inlineScript: |
           az group deployment create \
-            --resource-group ${{ secrets.azSnapshotStorageRG }} \
+            --resource-group ${{ secrets.azResourceGroupName }} \
             --template-file $GITHUB_WORKSPACE/AzAutomation/azSnapshotDistributionRunbook.azrm.json
